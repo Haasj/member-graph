@@ -1,6 +1,13 @@
 <!DOCTYPE html>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=.5, maximum-scale=2">
 <style>
+
+document, body {
+	margin: 0;
+	padding: 0;
+	overflow: hidden;
+}
 
 .node {
 	stroke: #fff;
@@ -24,16 +31,16 @@
 <script src="//d3js.org/d3.v3.min.js"></script>
 <script>
 
-var width = 800,
-	height = 600;
+console.log(window.innerWidth, window.innerHeight);
+
+var nodeSize = 24;
+var width, height, smallest, nodeDistance;
+refreshSizes();
 
 var color = d3.scale.category20();
 
 var force = d3.layout.force()
-	.charge(-120)
-	.linkDistance(120)
-	.linkStrength(0.1)
-	.size([width, height]);
+	.linkStrength(0.1);
 
 var svg = d3.select("body").append("svg")
 	.attr("width", width)
@@ -46,11 +53,35 @@ request.addEventListener('load', function(e) {
 request.open('GET', 'merged.json');
 request.send();
 
+function refreshSizes() {
+	width = window.innerWidth;
+	height = window.innerHeight;
+	smallest = Math.min(width, height);
+	nodeDistance = Math.floor(smallest/6);
+}
+
+function resize() {
+	force.stop();
+	refreshSizes();
+
+    svg
+		.attr("width", width)
+		.attr("height", height);
+
+	force
+		.charge(-nodeDistance)
+		.linkDistance(nodeDistance)
+		.size([width, height])
+		.start();
+}
+
 function render(graph) {
 	force
 		.nodes(graph.nodes)
-		.links(graph.links)
-		.start();
+		.links(graph.links);
+
+	window.addEventListener('resize', resize);
+	resize();
 
 	var link = svg.selectAll(".link").data(graph.links)
 		.enter().append("line")
@@ -60,8 +91,8 @@ function render(graph) {
 		.enter().append("image")
 			.attr('xlink:href', function(d) { return d.img; })
 			.attr("class", "node")
-			.attr("height", 24)
-			.attr("width", 24)
+			.attr("height", nodeSize)
+			.attr("width", nodeSize)
 			.on("mouseover", function(d) {
 				link.classed('highlighted', function(l) { return d === l.source || d === l.target; });
 			})
@@ -74,13 +105,14 @@ function render(graph) {
 		.text(function(d) { return d.name; });
 
 	force.on("tick", function() {
-		link.attr("x1", function(d) { return d.source.x + 12; })
-			.attr("y1", function(d) { return d.source.y + 12; })
-			.attr("x2", function(d) { return d.target.x + 12; })
-			.attr("y2", function(d) { return d.target.y + 12; });
+		var adjustment = Math.floor(nodeSize/2);
+		link.attr("x1", function(d) { return d.source.x; })
+			.attr("y1", function(d) { return d.source.y; })
+			.attr("x2", function(d) { return d.target.x; })
+			.attr("y2", function(d) { return d.target.y; });
 
-		node.attr("x", function(d) { return d.x; })
-			.attr("y", function(d) { return d.y; });
+		node.attr("x", function(d) { return d.x - adjustment; })
+			.attr("y", function(d) { return d.y - adjustment; });
 	});
 };
 
